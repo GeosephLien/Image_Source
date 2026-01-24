@@ -1,0 +1,43 @@
+name: Upload image from Image_Generate
+
+on:
+  workflow_dispatch:
+    inputs:
+      filename:
+        description: "PNG filename"
+        required: true
+      content_base64:
+        description: "PNG base64 content (no data URI prefix)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Image_Source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Write PNG file
+        run: |
+          mkdir -p images
+          echo "${{ inputs.content_base64 }}" | base64 --decode > "images/${{ inputs.filename }}"
+
+      - name: Commit & push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add images/${{ inputs.filename }}
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m "add image from Image_Generate: ${{ inputs.filename }}"
+          git push

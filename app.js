@@ -17,15 +17,14 @@ let lastFilename = null;
 
 // ---------- utils ----------
 function setStatus(text) {
-  if (elStatus) elStatus.textContent = text;
+  elStatus.textContent = text;
 }
 
-function pad(n, l = 2) {
-  return String(n).padStart(l, "0");
+function pad(n, len = 2) {
+  return String(n).padStart(len, "0");
 }
 
 function makeFilename() {
-  // UTC timestamp + ms，避免撞名，排序也穩
   const d = new Date();
   return (
     "gen_" +
@@ -47,63 +46,52 @@ function rand(min, max) {
 }
 
 // ---------- image generation ----------
-function generateRandomImage() {
+function generateImage() {
   const W = 512;
   const H = 512;
 
   ctx.clearRect(0, 0, W, H);
 
-  // 背景
-  ctx.fillStyle = `hsl(${Math.floor(rand(0, 360))}, 30%, 12%)`;
+  // background
+  ctx.fillStyle = `hsl(${rand(0, 360)}, 30%, 12%)`;
   ctx.fillRect(0, 0, W, H);
 
-  // 漸層
+  // gradient
   const g = ctx.createLinearGradient(
-    rand(0, W),
-    rand(0, H),
-    rand(0, W),
-    rand(0, H)
+    rand(0, W), rand(0, H),
+    rand(0, W), rand(0, H)
   );
   g.addColorStop(0, `hsla(${rand(0, 360)}, 90%, 65%, 0.9)`);
-  g.addColorStop(1, `hsla(${rand(0, 360)}, 90%, 55%, 0.2)`);
+  g.addColorStop(1, `hsla(${rand(0, 360)}, 90%, 55%, 0.25)`);
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, W, H);
 
-  // 圓點
+  // blobs
   for (let i = 0; i < 120; i++) {
     ctx.beginPath();
     ctx.arc(rand(0, W), rand(0, H), rand(6, 80), 0, Math.PI * 2);
-    ctx.fillStyle = `hsla(${rand(0, 360)}, ${rand(
-      50,
-      100
-    )}%, ${rand(30, 75)}%, ${rand(0.05, 0.22)})`;
+    ctx.fillStyle = `hsla(${rand(0, 360)}, ${rand(50, 100)}%, ${rand(30, 75)}%, ${rand(0.05, 0.25)})`;
     ctx.fill();
   }
 
-  // 線條
+  // lines
   ctx.lineWidth = rand(1, 4);
   for (let i = 0; i < 26; i++) {
     ctx.beginPath();
     ctx.moveTo(rand(0, W), rand(0, H));
     ctx.bezierCurveTo(
-      rand(0, W),
-      rand(0, H),
-      rand(0, W),
-      rand(0, H),
-      rand(0, W),
-      rand(0, H)
+      rand(0, W), rand(0, H),
+      rand(0, W), rand(0, H),
+      rand(0, W), rand(0, H)
     );
-    ctx.strokeStyle = `hsla(${rand(
-      0,
-      360
-    )}, 90%, 70%, ${rand(0.08, 0.35)})`;
+    ctx.strokeStyle = `hsla(${rand(0, 360)}, 90%, 70%, ${rand(0.08, 0.35)})`;
     ctx.stroke();
   }
 }
 
 function canvasToBlob() {
-  return new Promise((resolve) => {
-    canvas.toBlob((b) => resolve(b), "image/png", 1.0);
+  return new Promise(resolve => {
+    canvas.toBlob(b => resolve(b), "image/png", 1.0);
   });
 }
 
@@ -127,16 +115,16 @@ async function uploadViaActions(filename, blob) {
     {
       method: "POST",
       headers: {
-        Accept: "application/vnd.github+json",
-        "Content-Type": "application/json",
+        "Accept": "application/vnd.github+json",
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         ref: "main",
         inputs: {
           filename,
-          content_base64: base64,
-        },
-      }),
+          content_base64: base64
+        }
+      })
     }
   );
 
@@ -145,19 +133,19 @@ async function uploadViaActions(filename, blob) {
   }
 }
 
-// ---------- UI bindings ----------
+// ---------- UI ----------
 btnGen.addEventListener("click", async () => {
   btnGen.disabled = true;
   try {
     setStatus("生成中…");
-    generateRandomImage();
+    generateImage();
     const blob = await canvasToBlob();
-    if (!blob) throw new Error("生成 PNG 失敗");
+    if (!blob) throw new Error("PNG 生成失敗");
 
     lastBlob = blob;
     lastFilename = makeFilename();
+    elFname.textContent = lastFilename;
 
-    if (elFname) elFname.textContent = lastFilename;
     btnUpload.disabled = false;
     setStatus("已生成（可上傳）");
   } catch (e) {
@@ -188,6 +176,6 @@ btnUpload.addEventListener("click", async () => {
   }
 });
 
-// 初始狀態
+// init
 btnUpload.disabled = true;
 setStatus("尚未生成");

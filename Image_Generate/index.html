@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Image_Generate</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="bar">
+    <div class="title">Image_Generate</div>
+  </header>
+
+  <main class="wrap">
+    <section class="card">
+      <div class="row">
+        <canvas id="c" width="512" height="512"></canvas>
+        <div class="meta">
+          <div class="kv"><span>尺寸</span><b>512 × 512</b></div>
+          <div class="kv"><span>檔名</span><b id="fname">—</b></div>
+          <div class="kv"><span>狀態</span><b id="status">尚未生成</b></div>
+          <div class="hint">
+            你可以把這個網站放 GitHub Pages。<br/>
+            上傳時請貼「Fine-grained PAT」，不要寫死在程式碼。
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="btnGen">隨機生成 512×512 PNG</button>
+        <button id="btnUpload" class="primary" disabled>上傳到 Image_Source /images</button>
+      </div>
+
+      <details class="tokenBox">
+        <summary>上傳設定（需要一次性 Token）</summary>
+        <div class="tokenInner">
+          <label>
+            GitHub Token（Fine-grained PAT，Contents: Read+Write）
+            <input id="token" type="password" placeholder="ghp_... 或 github_pat_..." />
+          </label>
+
+          <div class="two">
+            <label>
+              目標 Repo
+              <input id="repo" type="text" value="GeosephLien/Image_Source" />
+            </label>
+
+            <label>
+              目標資料夾（固定用 images）
+              <input id="folder" type="text" value="images" />
+            </label>
+          </div>
+
+          <div class="two">
+            <label>
+              Branch
+              <input id="branch" type="text" value="main" />
+            </label>
+
+            <label>
+              Commit 訊息
+              <input id="msg" type="text" value="add generated png" />
+            </label>
+          </div>
+
+          <div class="note">
+            建議 Token 權限：只給 <b>GeosephLien/Image_Source</b> 這個 repo，並開 <b>Contents: Read and write</b>。
+            使用完可立即把 token 欄位清空。
+          </div>
+        </div>
+      </details>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

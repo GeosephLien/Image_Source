@@ -1,0 +1,87 @@
+* { box-sizing: border-box; }
+body{
+  margin:0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", sans-serif;
+  background:#0b0b0b;
+  color:#eaeaea;
+}
+
+.bar{
+  position: sticky;
+  top: 0;
+  padding: 12px 14px;
+  background: rgba(20,20,20,0.92);
+  border-bottom:1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(10px);
+}
+.title{ font-weight: 700; letter-spacing: .3px; }
+
+.wrap{ padding: 18px; display:flex; justify-content:center; }
+.card{
+  width: min(980px, 100%);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 16px;
+  background: rgba(255,255,255,0.04);
+  padding: 16px;
+  box-shadow: 0 10px 26px rgba(0,0,0,0.35);
+}
+.row{ display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start; }
+canvas{
+  width: 512px;
+  height: 512px;
+  max-width: 100%;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.meta{
+  flex: 1 1 240px;
+  min-width: 240px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.kv{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(0,0,0,0.18);
+}
+.kv span{ opacity:.85; }
+.hint{ opacity:.8; font-size: 13px; line-height: 1.5; padding: 6px 2px; }
+
+.controls{ margin-top: 14px; display:flex; gap:12px; flex-wrap:wrap; }
+button{
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.06);
+  color:#eaeaea;
+  cursor:pointer;
+}
+button:hover{ background: rgba(255,255,255,0.10); }
+button:disabled{ opacity:.45; cursor:not-allowed; }
+button.primary{ background: rgba(120,160,255,0.16); border-color: rgba(120,160,255,0.30); }
+
+.tokenBox{ margin-top: 14px; }
+.tokenBox summary{ cursor:pointer; opacity:.92; }
+.tokenInner{
+  margin-top: 10px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+label{ display:flex; flex-direction:column; gap:6px; font-size: 13px; opacity:.95; }
+input{
+  padding: 10px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(0,0,0,0.22);
+  color:#eaeaea;
+}
+.two{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+@media (max-width: 720px){ .two{ grid-template-columns: 1fr; } }
+.note{ opacity:.82; font-size: 12px; line-height: 1.5; padding: 4px 2px; }

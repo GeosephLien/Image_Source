@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Image Gallery</title>
   <style>
+    @font-face {
+      font-family: "Street Soul";
+      src: url("fonts/street soul.ttf") format("truetype");
+      font-display: swap;
+    }
+
     :root {
       --bg: #f4f6f8;
       --card: #ffffff;
@@ -102,10 +108,22 @@
     }
 
     .card-date {
+      --date-mask-url: none;
       position: absolute;
       left: 0;
       top: 0;
+      font-family: "Street Soul", "Noto Sans TC", sans-serif;
       color: var(--date-color, #fff);
+      mix-blend-mode: multiply;
+      opacity: 0.8;
+      -webkit-mask-image: var(--date-mask-url);
+      mask-image: var(--date-mask-url);
+      -webkit-mask-repeat: no-repeat;
+      mask-repeat: no-repeat;
+      -webkit-mask-position: center;
+      mask-position: center;
+      -webkit-mask-size: 100% 100%;
+      mask-size: 100% 100%;
       font-weight: 700;
       letter-spacing: 0.12em;
       pointer-events: none;
@@ -130,7 +148,6 @@
     const LOCAL_MANIFEST = "images/images.json";
     const MASK_DIR = "sourceimages/mask";
     const RELOAD_INTERVAL_MS = 5000;
-    const DATE_COLORS = ["#ffd166", "#ef476f", "#06d6a0", "#118ab2", "#f7fff7", "#ff9f1c", "#e4c1f9"];
     const FALLBACK_MASKS = [
       `${MASK_DIR}/mask_01.jpg`,
       `${MASK_DIR}/mask_02.jpg`,
@@ -148,13 +165,14 @@
       return items[Math.floor(Math.random() * items.length)];
     }
 
-    function formatDateYMD(dateValue) {
+    function formatDateLabel(dateValue) {
       const parsed = dateValue ? new Date(dateValue) : new Date();
       const date = Number.isNaN(parsed.getTime()) ? new Date() : parsed;
-      const yyyy = String(date.getFullYear());
-      const mm = String(date.getMonth() + 1).padStart(2, "0");
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const mm = monthNames[date.getMonth()];
       const dd = String(date.getDate()).padStart(2, "0");
-      return `${yyyy} ${mm} ${dd}`;
+      const yyyy = String(date.getFullYear());
+      return `${mm}/${dd}/${yyyy}`;
     }
 
     function randomInt(min, max) {
@@ -164,11 +182,71 @@
     function buildRandomDateHtml(dateText) {
       return dateText
         .split("")
-        .map((char) => {
-          const size = randomInt(14, 34);
+        .map((char, index, chars) => {
+          const prev = index > 0 ? chars[index - 1] : "";
+          const isFirstCharOfPart = /[A-Za-z0-9]/.test(char) && (index === 0 || prev === "/");
+          const size = isFirstCharOfPart ? 68 : 40;
           return `<span class="card-date-char" style="font-size: ${size}px;">${char}</span>`;
         })
         .join("");
+    }
+
+    function pickColorFromImage(img) {
+      try {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        if (!ctx) return "";
+        const size = 24;
+        canvas.width = size;
+        canvas.height = size;
+        ctx.drawImage(img, 0, 0, size, size);
+
+        for (let i = 0; i < 20; i += 1) {
+          const x = randomInt(0, size - 1);
+          const y = randomInt(0, size - 1);
+          const pixel = ctx.getImageData(x, y, 1, 1).data;
+          if (pixel[3] > 24) {
+            return `rgb(${pixel[0]}, ${pixel[1]}, ${pixel[2]})`;
+          }
+        }
+
+        const data = ctx.getImageData(0, 0, size, size).data;
+        let r = 0;
+        let g = 0;
+        let b = 0;
+        let count = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i + 3] <= 24) continue;
+          r += data[i];
+          g += data[i + 1];
+          b += data[i + 2];
+          count += 1;
+        }
+        if (!count) return "";
+        return `rgb(${Math.round(r / count)}, ${Math.round(g / count)}, ${Math.round(b / count)})`;
+      } catch {
+        return "";
+      }
+    }
+
+    function applyDateColorsFromImages(gallery) {
+      const cards = gallery.querySelectorAll(".card");
+      cards.forEach((card) => {
+        const img = card.querySelector("img");
+        const dateEl = card.querySelector(".card-date");
+        if (!(img instanceof HTMLImageElement) || !(dateEl instanceof HTMLElement)) return;
+
+        const setColor = () => {
+          const sampledColor = pickColorFromImage(img);
+          if (sampledColor) dateEl.style.setProperty("--date-color", sampledColor);
+        };
+
+        if (img.complete && img.naturalWidth > 0) {
+          setColor();
+        } else {
+          img.addEventListener("load", setColor, { once: true });
+        }
+      });
     }
 
     async function loadLocalManifest() {
@@ -274,8 +352,8 @@
         const cards = images.map(item => {
           const url = item.path;
           const maskUrl = pickRandom(masks);
-          const dateLabel = formatDateYMD(item.lastModified);
-          const dateColor = pickRandom(DATE_COLORS) || "#ffffff";
+          const dateMaskUrl = pickRandom(masks);
+          const dateLabel = formatDateLabel(item.lastModified);
           const dateX = randomInt(5, 75);
           const dateY = randomInt(8, 86);
           const dateHtml = buildRandomDateHtml(dateLabel);
@@ -283,7 +361,7 @@
             <article class="card">
               <div class="card-inner">
                 <img src="${url}" alt="${item.name}" loading="lazy" style="--mask-url: url('${maskUrl}');" />
-                <span class="card-date" style="--date-color: ${dateColor}; left: ${dateX}%; top: ${dateY}%;">${dateHtml}</span>
+                <span class="card-date" style="--date-mask-url: url('${dateMaskUrl}'); left: ${dateX}%; top: ${dateY}%;">${dateHtml}</span>
               </div>
             </article>
           `;
@@ -291,6 +369,7 @@
 
         gallery.innerHTML = cards.join("");
         applyCardOverlap(gallery);
+        applyDateColorsFromImages(gallery);
         lastRenderKey = renderKey;
         if (status) status.textContent = `Loaded ${images.length} images (${source}), ${masks.length} masks (${maskSource})`;
       } catch (err) {

@@ -20,7 +20,11 @@
       margin: 0;
       padding: 16px;
       font-family: "Segoe UI", "Noto Sans TC", sans-serif;
-      background: linear-gradient(180deg, #eef2f6 0%, var(--bg) 100%);
+      background-color: #5b2c21;
+      background-image: url("sourceimages/brickwall_01.jpg");
+      background-repeat: repeat-x;
+      background-position: top left;
+      background-size: auto 100vh;
       color: var(--text);
     }
 
@@ -57,11 +61,11 @@
     .card {
       position: relative;
       flex: 0 0 auto;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
+      background: transparent;
+      border: 0;
+      border-radius: 0;
       overflow: hidden;
-      box-shadow: var(--shadow);
+      box-shadow: none;
       height: 100%;
     }
 
@@ -75,7 +79,9 @@
       width: auto;
       height: 100%;
       object-fit: contain;
-      background: #f0f3f7;
+      background: transparent;
+      mix-blend-mode: multiply;
+      opacity: 0.8;
     }
 
     .status {
@@ -180,6 +186,14 @@
       }
     }
 
+    function syncBackgroundWithScroll() {
+      const gallery = document.getElementById("gallery");
+      gallery.addEventListener("scroll", () => {
+        document.body.style.backgroundPosition = `${-gallery.scrollLeft}px top`;
+      }, { passive: true });
+    }
+
+    syncBackgroundWithScroll();
     loadImages();
   </script>
 </body>

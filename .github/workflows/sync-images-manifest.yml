@@ -1,0 +1,37 @@
+name: Sync images manifest
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "images/**"
+    paths-ignore:
+      - "images/images.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync-manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate images manifest
+        run: python scripts/generate-images-manifest.py
+
+      - name: Commit and push manifest if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add images/images.json
+          if git diff --cached --quiet; then
+            echo "images/images.json is already up to date"
+            exit 0
+          fi
+          git commit -m "chore: sync images manifest"
+          git push

@@ -18,7 +18,7 @@
 
     body {
       margin: 0;
-      padding: 16px;
+      padding: 0;
       font-family: "Segoe UI", "Noto Sans TC", sans-serif;
       background-color: #5b2c21;
       background-image: url("sourceimages/background/brickwall_01.jpg");
@@ -31,7 +31,7 @@
     .wrap {
       max-width: 100%;
       margin: 0;
-      height: calc(100vh - 32px);
+      height: 100vh;
       display: flex;
       flex-direction: column;
     }
@@ -70,11 +70,7 @@
       height: 100%;
     }
 
-    .card:not(:first-child) {
-      transform: translateX(-20%);
-    }
-
-    .card a {
+    .card .card-inner {
       display: block;
       height: 100%;
     }
@@ -87,7 +83,7 @@
       object-fit: contain;
       background: transparent;
       mix-blend-mode: multiply;
-      opacity: 0.8;
+      opacity: 0.9;
       -webkit-mask-image: var(--mask-url), linear-gradient(#fff, #fff);
       mask-image: var(--mask-url), linear-gradient(#fff, #fff);
       -webkit-mask-mode: luminance;
@@ -171,33 +167,19 @@
         .sort((a, b) => a.name.localeCompare(b.name));
     }
 
-    async function loadMasksFromGitHubApi() {
-      const owner = "GeosephLien";
-      const repo = "Image_Source";
-      const api = `https://api.github.com/repos/${owner}/${repo}/contents/sourceimages/mask`;
-      const res = await fetch(api, { headers: { Accept: "application/vnd.github+json" } });
-      if (!res.ok) throw new Error(`Mask API ${res.status}`);
-      const files = await res.json();
-      return files
-        .filter(item => item.type === "file" && isImageFile(item.name))
-        .map(item => `sourceimages/mask/${item.name}`);
-    }
-
-    async function loadMasks() {
-      try {
-        const masks = await loadMasksFromGitHubApi();
-        return masks.length ? masks : FALLBACK_MASKS;
-      } catch {
-        return FALLBACK_MASKS;
-      }
-    }
-
     async function loadImages() {
       const status = document.getElementById("status");
       const gallery = document.getElementById("gallery");
 
+      function applyCardOverlap() {
+        const cards = gallery.querySelectorAll(".card");
+        cards.forEach((card, index) => {
+          card.style.marginLeft = index === 0 ? "0" : `${-card.offsetWidth * 0.5}px`;
+        });
+      }
+
       try {
-        const masks = await loadMasks();
+        const masks = FALLBACK_MASKS;
         let images;
         let source = "images/images.json";
         try {
@@ -217,14 +199,16 @@
           const maskUrl = pickRandom(masks);
           return `
             <article class="card">
-              <a href="${url}" target="_blank" rel="noopener noreferrer">
+              <div class="card-inner">
                 <img src="${url}" alt="${item.name}" loading="lazy" style="--mask-url: url('${maskUrl}');" />
-              </a>
+              </div>
             </article>
           `;
         });
 
         gallery.innerHTML = cards.join("");
+        applyCardOverlap();
+        window.addEventListener("resize", applyCardOverlap);
         if (status) status.textContent = `Loaded ${images.length} images (${source})`;
       } catch (err) {
         if (status) status.textContent = `Load failed: ${err.message}`;
@@ -242,34 +226,92 @@
       const gallery = document.getElementById("gallery");
       let isDragging = false;
       let startX = 0;
-      let startScrollLeft = 0;
+      let lastX = 0;
+      let lastTime = 0;
+      let velocity = 0;
+      let inertiaId = 0;
       let moved = false;
       let suppressClick = false;
 
+      function stopInertia() {
+        if (!inertiaId) return;
+        cancelAnimationFrame(inertiaId);
+        inertiaId = 0;
+      }
+
+      function startInertia() {
+        const friction = 0.95;
+        const minVelocity = 0.02; // px/ms
+
+        function step() {
+          const maxScroll = Math.max(0, gallery.scrollWidth - gallery.clientWidth);
+          gallery.scrollLeft += velocity * 16.67;
+
+          if (gallery.scrollLeft <= 0 || gallery.scrollLeft >= maxScroll) {
+            stopInertia();
+            return;
+          }
+
+          velocity *= friction;
+          if (Math.abs(velocity) < minVelocity) {
+            stopInertia();
+            return;
+          }
+          inertiaId = requestAnimationFrame(step);
+        }
+
+        if (Math.abs(velocity) < minVelocity) return;
+        stopInertia();
+        inertiaId = requestAnimationFrame(step);
+      }
+
       gallery.addEventListener("mousedown", (event) => {
         if (event.button !== 0) return;
+        stopInertia();
         isDragging = true;
         moved = false;
         startX = event.clientX;
-        startScrollLeft = gallery.scrollLeft;
+        lastX = event.clientX;
+        lastTime = performance.now();
+        velocity = 0;
         gallery.classList.add("is-dragging");
+        event.preventDefault();
       });
 
       window.addEventListener("mousemove", (event) => {
         if (!isDragging) return;
-        const deltaX = event.clientX - startX;
-        if (Math.abs(deltaX) > 3) moved = true;
-        gallery.scrollLeft = startScrollLeft - deltaX;
+        const now = performance.now();
+        const deltaX = event.clientX - lastX;
+        const dt = Math.max(1, now - lastTime);
+        const scrollDelta = -deltaX;
+
+        if (Math.abs(event.clientX - startX) > 3) moved = true;
+
+        gallery.scrollLeft += scrollDelta;
+        const instantVelocity = scrollDelta / dt;
+        velocity = (velocity * 0.8) + (instantVelocity * 0.2);
+
+        lastX = event.clientX;
+        lastTime = now;
+        event.preventDefault();
       });
 
       window.addEventListener("mouseup", () => {
         if (!isDragging) return;
         isDragging = false;
         gallery.classList.remove("is-dragging");
+        startInertia();
         if (moved) {
           suppressClick = true;
           setTimeout(() => { suppressClick = false; }, 0);
         }
+      });
+
+      window.addEventListener("mouseleave", () => {
+        if (!isDragging) return;
+        isDragging = false;
+        gallery.classList.remove("is-dragging");
+        startInertia();
       });
 
       gallery.addEventListener("dragstart", (event) => {

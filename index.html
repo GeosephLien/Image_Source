@@ -90,6 +90,16 @@
       background: transparent;
       mix-blend-mode: pin-light;
       opacity: 0.75;
+      -webkit-mask-image: var(--mask-url, none);
+      mask-image: var(--mask-url, none);
+      -webkit-mask-mode: luminance;
+      mask-mode: luminance;
+      -webkit-mask-repeat: no-repeat;
+      mask-repeat: no-repeat;
+      -webkit-mask-position: center;
+      mask-position: center;
+      -webkit-mask-size: 100% 100%;
+      mask-size: 100% 100%;
       -webkit-user-drag: none;
       user-select: none;
     }
@@ -142,6 +152,12 @@
   <script>
     const IMAGE_EXT = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg", ".avif"];
     const LOCAL_MANIFEST = "images/images.json";
+    const MASK_DIR = "sourceimages/mask";
+    const FALLBACK_MASKS = [
+      `${MASK_DIR}/mask_01.jpg`,
+      `${MASK_DIR}/mask_02.jpg`,
+      `${MASK_DIR}/mask_03.jpg`
+    ];
     const RELOAD_INTERVAL_MS = 1000;
     const SIGN_FIRST = ["Ari", "Jax", "Nova", "Kiro", "Milo", "Zed", "Niko", "Rae", "Luna", "Vex"];
     const SIGN_LAST = ["Lane", "Stone", "Flux", "Ink", "Rift", "Crow", "Drift", "Vale", "Ghost", "Skye"];
@@ -155,6 +171,13 @@
     function pickRandom(items) {
       if (!Array.isArray(items) || items.length === 0) return "";
       return items[Math.floor(Math.random() * items.length)];
+    }
+
+    function shouldUseDesktopMask() {
+      const ua = navigator.userAgent || "";
+      const isMobileUa = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+      const hasCoarsePointer = window.matchMedia && window.matchMedia("(hover: none), (pointer: coarse)").matches;
+      return !(isMobileUa || hasCoarsePointer);
     }
 
     function formatDateLabel(dateValue) {
@@ -329,6 +352,22 @@
         .sort((a, b) => a.name.localeCompare(b.name));
     }
 
+    async function loadMasksFromGitHubApi() {
+      const owner = "GeosephLien";
+      const repo = "Image_Source";
+      const api = `https://api.github.com/repos/${owner}/${repo}/contents/${MASK_DIR}`;
+      const res = await fetch(api, {
+        cache: "no-store",
+        headers: { Accept: "application/vnd.github+json" }
+      });
+      if (!res.ok) throw new Error(`Mask API ${res.status}`);
+      const files = await res.json();
+      return files
+        .filter(item => item.type === "file" && isImageFile(item.name))
+        .map(item => `${MASK_DIR}/${item.name}`)
+        .sort((a, b) => a.localeCompare(b));
+    }
+
     function applyCardOverlap(gallery) {
       const cards = gallery.querySelectorAll(".card");
       cards.forEach((card) => {
@@ -340,6 +379,20 @@
       const status = document.getElementById("status");
       const gallery = document.getElementById("gallery");
       try {
+        const useMask = shouldUseDesktopMask();
+        let masks = [];
+        let maskSource = "disabled on mobile";
+        if (useMask) {
+          maskSource = "GitHub API";
+          try {
+            masks = await loadMasksFromGitHubApi();
+            if (masks.length === 0) throw new Error("No masks found");
+          } catch {
+            masks = FALLBACK_MASKS;
+            maskSource = "fallback";
+          }
+        }
+
         let images;
         let source = "images/images.json";
         try {
@@ -350,7 +403,9 @@
         }
 
         const renderKey = JSON.stringify({
-          images: images.map(item => `${item.path}|${item.lastModified || ""}`)
+          images: images.map(item => `${item.path}|${item.lastModified || ""}`),
+          useMask,
+          masks
         });
         if (renderKey === lastRenderKey) return;
 
@@ -363,6 +418,8 @@
 
         const cards = images.map(item => {
           const url = item.path;
+          const maskUrl = useMask ? pickRandom(masks) : "";
+          const maskStyle = maskUrl ? ` style="--mask-url: url('${maskUrl}');"` : "";
           const dateLabel = formatDateLabel(item.lastModified);
           const datePos = pickDatePosition();
           const dateRotate = randomInt(-20, 20);
@@ -371,7 +428,7 @@
           return `
             <article class="card">
               <div class="card-inner">
-                <img src="${url}" alt="${item.name}" loading="lazy" />
+                <img src="${url}" alt="${item.name}" loading="lazy"${maskStyle} />
                 <span class="card-date" style="--date-rotate: ${dateRotate}deg; left: ${datePos.x}%; top: ${datePos.y}%;">
                   <span class="card-date-main">${dateHtml}</span>
                   <span class="card-signature">${signature}</span>
@@ -386,7 +443,11 @@
         keepDateLabelsVisible(gallery);
         applyDateColorsFromImages(gallery);
         lastRenderKey = renderKey;
-        if (status) status.textContent = `Loaded ${images.length} images (${source})`;
+        if (status) {
+          status.textContent = useMask
+            ? `Loaded ${images.length} images (${source}), ${masks.length} masks (${maskSource})`
+            : `Loaded ${images.length} images (${source}), mask disabled on mobile`;
+        }
       } catch (err) {
         if (status) status.textContent = `Load failed: ${err.message}`;
       }

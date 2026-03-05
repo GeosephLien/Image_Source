@@ -38,14 +38,19 @@ def is_image(path: Path) -> bool:
     return path.is_file() and path.suffix.lower() in IMAGE_EXTS
 
 
+def iter_image_files() -> List[Path]:
+    if not IMAGES_DIR.exists():
+        return []
+
+    return sorted(path for path in IMAGES_DIR.rglob("*") if is_image(path))
+
+
 def collect_entries() -> List[Dict[str, str]]:
     if not IMAGES_DIR.exists():
         IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 
     entries = []
-    for path in IMAGES_DIR.iterdir():
-        if not is_image(path):
-            continue
+    for path in iter_image_files():
         rel = path.relative_to(ROOT).as_posix()
         entries.append(
             {
@@ -85,12 +90,13 @@ def watch_manifest(interval: float) -> None:
     last_snapshot: Dict[str, Tuple[int, int]] = {}
     while True:
         snapshot: Dict[str, Tuple[int, int]] = {}
-        if IMAGES_DIR.exists():
-            for path in IMAGES_DIR.iterdir():
-                if not is_image(path):
-                    continue
+        for path in iter_image_files():
+            rel = path.relative_to(IMAGES_DIR).as_posix()
+            try:
                 stat = path.stat()
-                snapshot[path.name] = (stat.st_mtime_ns, stat.st_size)
+            except FileNotFoundError:
+                continue
+            snapshot[rel] = (stat.st_mtime_ns, stat.st_size)
 
         if snapshot != last_snapshot:
             build_manifest()
@@ -101,23 +107,27 @@ def watch_manifest(interval: float) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate images/images.json manifest.")
-    parser.add_argument("--watch", action="store_true", help="Watch images/ and auto-update manifest.")
+    parser.add_argument(
+        "--once",
+        action="store_true",
+        help="Run once and exit (default mode is watch).",
+    )
     parser.add_argument(
         "--interval",
         type=float,
         default=1.0,
-        help="Polling interval in seconds when --watch is enabled (default: 1.0).",
+        help="Polling interval in seconds in watch mode (default: 1.0).",
     )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    if args.watch:
-        watch_manifest(max(0.2, args.interval))
+    if args.once:
+        build_manifest()
         return
 
-    build_manifest()
+    watch_manifest(max(0.2, args.interval))
 
 
 if __name__ == "__main__":

@@ -89,8 +89,20 @@
       height: 100%;
       object-fit: contain;
       background: transparent;
-      mix-blend-mode: normal;
-      opacity: 1;
+      mix-blend-mode: multiply;
+      opacity: 0.75;
+      -webkit-mask-image: var(--mask-url), linear-gradient(#fff, #fff);
+      mask-image: var(--mask-url), linear-gradient(#fff, #fff);
+      -webkit-mask-mode: luminance;
+      mask-mode: luminance;
+      -webkit-mask-repeat: no-repeat;
+      mask-repeat: no-repeat;
+      -webkit-mask-position: center;
+      mask-position: center;
+      -webkit-mask-size: 100% 100%;
+      mask-size: 100% 100%;
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
       -webkit-user-drag: none;
       user-select: none;
     }
@@ -406,7 +418,7 @@
           return `
             <article class="card">
               <div class="card-inner">
-                <img src="${url}" alt="${item.name}" loading="eager" style="--mask-url: url('${maskUrl}');" />
+                <img src="${url}" alt="${item.name}" loading="lazy" style="--mask-url: url('${maskUrl}');" />
                 <span class="card-date" style="--date-rotate: ${dateRotate}deg; left: ${datePos.x}%; top: ${datePos.y}%;">
                   <span class="card-date-main">${dateHtml}</span>
                   <span class="card-signature">${signature}</span>

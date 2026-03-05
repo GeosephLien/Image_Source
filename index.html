@@ -83,7 +83,6 @@
     }
 
     .card img {
-      --mask-url: url("sourceimages/mask/mask_01.jpg");
       display: block;
       width: auto;
       height: 100%;
@@ -91,16 +90,6 @@
       background: transparent;
       mix-blend-mode: pin-light;
       opacity: 0.75;
-      -webkit-mask-image: var(--mask-url);
-      mask-image: var(--mask-url);
-      -webkit-mask-mode: luminance;
-      mask-mode: luminance;
-      -webkit-mask-repeat: no-repeat;
-      mask-repeat: no-repeat;
-      -webkit-mask-position: center;
-      mask-position: center;
-      -webkit-mask-size: 100% 100%;
-      mask-size: 100% 100%;
       -webkit-user-drag: none;
       user-select: none;
     }
@@ -153,15 +142,9 @@
   <script>
     const IMAGE_EXT = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg", ".avif"];
     const LOCAL_MANIFEST = "images/images.json";
-    const MASK_DIR = "sourceimages/mask";
     const RELOAD_INTERVAL_MS = 1000;
     const SIGN_FIRST = ["Ari", "Jax", "Nova", "Kiro", "Milo", "Zed", "Niko", "Rae", "Luna", "Vex"];
     const SIGN_LAST = ["Lane", "Stone", "Flux", "Ink", "Rift", "Crow", "Drift", "Vale", "Ghost", "Skye"];
-    const FALLBACK_MASKS = [
-      `${MASK_DIR}/mask_01.jpg`,
-      `${MASK_DIR}/mask_02.jpg`,
-      `${MASK_DIR}/mask_03.jpg`
-    ];
     let lastRenderKey = "";
 
     function isImageFile(name) {
@@ -346,22 +329,6 @@
         .sort((a, b) => a.name.localeCompare(b.name));
     }
 
-    async function loadMasksFromGitHubApi() {
-      const owner = "GeosephLien";
-      const repo = "Image_Source";
-      const api = `https://api.github.com/repos/${owner}/${repo}/contents/${MASK_DIR}`;
-      const res = await fetch(api, {
-        cache: "no-store",
-        headers: { Accept: "application/vnd.github+json" }
-      });
-      if (!res.ok) throw new Error(`Mask API ${res.status}`);
-      const files = await res.json();
-      return files
-        .filter(item => item.type === "file" && isImageFile(item.name))
-        .map(item => `${MASK_DIR}/${item.name}`)
-        .sort((a, b) => a.localeCompare(b));
-    }
-
     function applyCardOverlap(gallery) {
       const cards = gallery.querySelectorAll(".card");
       cards.forEach((card) => {
@@ -373,16 +340,6 @@
       const status = document.getElementById("status");
       const gallery = document.getElementById("gallery");
       try {
-        let masks;
-        let maskSource = "GitHub API";
-        try {
-          masks = await loadMasksFromGitHubApi();
-          if (masks.length === 0) throw new Error("No masks found");
-        } catch {
-          masks = FALLBACK_MASKS;
-          maskSource = "fallback";
-        }
-
         let images;
         let source = "images/images.json";
         try {
@@ -393,8 +350,7 @@
         }
 
         const renderKey = JSON.stringify({
-          images: images.map(item => `${item.path}|${item.lastModified || ""}`),
-          masks
+          images: images.map(item => `${item.path}|${item.lastModified || ""}`)
         });
         if (renderKey === lastRenderKey) return;
 
@@ -407,7 +363,6 @@
 
         const cards = images.map(item => {
           const url = item.path;
-          const maskUrl = pickRandom(masks);
           const dateLabel = formatDateLabel(item.lastModified);
           const datePos = pickDatePosition();
           const dateRotate = randomInt(-20, 20);
@@ -416,7 +371,7 @@
           return `
             <article class="card">
               <div class="card-inner">
-                <img src="${url}" alt="${item.name}" loading="lazy" style="--mask-url: url('${maskUrl}');" />
+                <img src="${url}" alt="${item.name}" loading="lazy" />
                 <span class="card-date" style="--date-rotate: ${dateRotate}deg; left: ${datePos.x}%; top: ${datePos.y}%;">
                   <span class="card-date-main">${dateHtml}</span>
                   <span class="card-signature">${signature}</span>
@@ -431,7 +386,7 @@
         keepDateLabelsVisible(gallery);
         applyDateColorsFromImages(gallery);
         lastRenderKey = renderKey;
-        if (status) status.textContent = `Loaded ${images.length} images (${source}), ${masks.length} masks (${maskSource})`;
+        if (status) status.textContent = `Loaded ${images.length} images (${source})`;
       } catch (err) {
         if (status) status.textContent = `Load failed: ${err.message}`;
       }
